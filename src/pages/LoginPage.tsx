@@ -28,10 +28,8 @@ const LoginPage: React.FC = () => {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-logo">
-          <span className="logo-icon">N</span>
           <span className="logo-text">NotifyApp</span>
         </div>
-        <h1 className="auth-title">Sign in</h1>
         <p className="auth-sub">Stay connected to your world</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -66,9 +64,7 @@ const LoginPage: React.FC = () => {
           Don't have an account? <Link to="/register">Create one</Link>
         </p>
 
-        <div className="admin-hint">
-          <span>Admin login:</span> admin@notifyapp.com / Admin@123
-        </div>
+       
       </div>
     </div>
   );
