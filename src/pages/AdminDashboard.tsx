@@ -11,6 +11,7 @@ const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [selected, setSelected] = useState<Notification | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -65,6 +66,14 @@ const AdminDashboard: React.FC = () => {
       setSending(false);
     }
   };
+
+  const getPreview = (text: string, maxWords = 14) => {
+    const words = text.trim().split(/\s+/);
+    if (words.length <= maxWords) return text;
+    return `${words.slice(0, maxWords).join(' ')} .....`;
+  };
+
+  const typeLabel = (n: Notification) => (n.type === 'direct' ? 'Normal' : 'Broadcast');
 
   return (
     <div className="dashboard admin">
@@ -178,11 +187,14 @@ const AdminDashboard: React.FC = () => {
                         <h3 className="notif-title">{n.title}</h3>
                         <div className="notif-meta">
                           <span className={`badge badge-${n.type}`}>
-                            {n.type === 'direct' ? 'Direct' : 'Broadcast'}
+                            {typeLabel(n)}
                           </span>
                         </div>
                       </div>
-                      <p className="notif-msg">{n.message}</p>
+                      <div className="notif-preview">
+                        <p className="notif-msg">{getPreview(n.message)}</p>
+                        <button className="btn-view" onClick={() => setSelected(n)}>View</button>
+                      </div>
                       <div className="notif-footer">
                         <span className="notif-from">
                           To: {(n.recipient as any)?.username || "All users"}
@@ -199,10 +211,34 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {selected && (
+        <div className="modal-overlay" onClick={() => setSelected(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title">{selected.title}</h3>
+                <div className="modal-meta">
+                  <span className={`badge badge-${selected.type}`}>{typeLabel(selected)}</span>
+                  <span className="modal-sub">
+                    To: {(selected.recipient as any)?.username || "All users"}
+                  </span>
+                  <span className="modal-sub">
+                    {new Date(selected.createdAt).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <button className="modal-close" onClick={() => setSelected(null)}>Close</button>
+            </div>
+            <div className="modal-body">
+              <p>{selected.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default AdminDashboard;
-
 

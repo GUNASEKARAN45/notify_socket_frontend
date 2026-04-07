@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../hooks/useSocket';
 import { Notification } from '../types';
@@ -10,6 +10,8 @@ const UserDashboard: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
+  const [selected, setSelected] = useState<Notification | null>(null);
+  const shownToastIds = useRef<Set<string>>(new Set());
 
   const addNotification = useCallback((n: Notification) => {
     setNotifications(prev => {
@@ -24,23 +26,45 @@ const UserDashboard: React.FC = () => {
     fetchNotifications();
   }, []);
 
-  // On login, show pending toast-type notifications that haven't been shown yet
+  const getPreview = (text: string, maxWords = 14) => {
+    const words = text.trim().split(/\s+/);
+    if (words.length <= maxWords) return text;
+    return `${words.slice(0, maxWords).join(' ')} .....`;
+  };
+
+  const typeLabel = (n: Notification) => (n.type === 'direct' ? 'Normal' : 'Broadcast');
+
+  const renderToast = (t: { visible: boolean; id: string }, n: Notification) => (
+    <div className={`toast-broadcast ${t.visible ? 'animate-in' : 'animate-out'}`}>
+      <div>
+        <strong>{n.title}</strong>
+        <span className={`toast-type badge badge-${n.type}`}>{typeLabel(n)}</span>
+        <p>{getPreview(n.message)}</p>
+        <button
+          className="toast-view-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            toast.dismiss(t.id);
+            setSelected(n);
+          }}
+        >
+          View
+        </button>
+      </div>
+    </div>
+  );
+
   useEffect(() => {
     if (!loading) {
       const pending = notifications.filter(n => n.type === 'toast' && !n.isToastShown);
       pending.forEach(n => {
-        toast.custom((t) => (
-          <div className={`toast-broadcast ${t.visible ? 'animate-in' : 'animate-out'}`}>
-            <div>
-              <strong>{n.title}</strong>
-              <p>{n.message}</p>
-            </div>
-          </div>
-        ), { duration: 6000 });
+        if (shownToastIds.current.has(n._id)) return;
+        shownToastIds.current.add(n._id);
+        toast.custom((t) => renderToast(t, n), { duration: 6000 });
         api.patch(`/notifications/${n._id}/toast-shown`).catch(() => {});
       });
     }
-  }, [loading]); // eslint-disable-line
+  }, [loading, notifications]); 
 
   const fetchNotifications = async () => {
     try {
@@ -139,12 +163,15 @@ const UserDashboard: React.FC = () => {
                     <h3 className="notif-title">{n.title}</h3>
                     <div className="notif-meta">
                       <span className={`badge badge-${n.type}`}>
-                        {n.type === 'direct' ? 'Direct' : 'Broadcast'}
+                        {typeLabel(n)}
                       </span>
                       {!n.isRead && <span className="dot-unread" />}
                     </div>
                   </div>
-                  <p className="notif-msg">{n.message}</p>
+                  <div className="notif-preview">
+                    <p className="notif-msg">{getPreview(n.message)}</p>
+                    <button className="btn-view" onClick={() => setSelected(n)}>View</button>
+                  </div>
                   <div className="notif-footer">
                     <span className="notif-from">From: {n.sender.username}</span>
                     <span className="notif-time">
@@ -162,9 +189,31 @@ const UserDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {selected && (
+        <div className="modal-overlay" onClick={() => setSelected(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title">{selected.title}</h3>
+                <div className="modal-meta">
+                  <span className={`badge badge-${selected.type}`}>{typeLabel(selected)}</span>
+                  <span className="modal-sub">From: {selected.sender.username}</span>
+                  <span className="modal-sub">
+                    {new Date(selected.createdAt).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <button className="modal-close" onClick={() => setSelected(null)}>Close</button>
+            </div>
+            <div className="modal-body">
+              <p>{selected.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default UserDashboard;
-

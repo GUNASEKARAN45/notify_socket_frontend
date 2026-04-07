@@ -1,9 +1,7 @@
-import { createElement, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { Notification } from '../types';
-import api from '../api';
 
 export const useSocket = (onNewNotification: (n: Notification) => void) => {
   const { user } = useAuth();
@@ -15,21 +13,6 @@ export const useSocket = (onNewNotification: (n: Notification) => void) => {
     return window.location.origin;
   }, []);
 
-  const renderToast = (
-    t: { visible: boolean },
-    notification: Notification,
-    variant: 'direct' | 'broadcast'
-  ) =>
-    createElement(
-      'div',
-      { className: `toast-${variant} ${t.visible ? 'animate-in' : 'animate-out'}` },
-      createElement(
-        'div',
-        null,
-        createElement('strong', null, notification.title),
-        createElement('p', null, notification.message)
-      )
-    );
 
   useEffect(() => {
     if (!user?._id) return;
@@ -49,8 +32,6 @@ export const useSocket = (onNewNotification: (n: Notification) => void) => {
         onNewNotification(notification);
       } else if (notification.type === 'toast') {
         onNewNotification(notification);
-        toast.custom((t) => renderToast(t, notification, 'broadcast'), { duration: 6000 });
-        api.patch(`/notifications/${notification._id}/toast-shown`).catch(() => {});
       }
     });
 
